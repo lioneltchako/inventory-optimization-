@@ -6,14 +6,21 @@ inventory policy optimization across 50 SKUs.
 
 from __future__ import annotations
 
+import sys
 import types
+from pathlib import Path
 
-import streamlit as st
+# Ensure the repo root is on sys.path for Streamlit Cloud deployments
+_repo_root = str(Path(__file__).resolve().parent.parent)
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
 
-from inventory_simulator.data.contracts import PrecomputedData
-from inventory_simulator.data.generator import generate_phase1_outputs
-from inventory_simulator.data.precompute import precompute_all
-from inventory_simulator.pages import (
+import streamlit as st  # noqa: E402
+
+from inventory_simulator.data.contracts import PrecomputedData  # noqa: E402
+from inventory_simulator.data.generator import generate_phase1_outputs  # noqa: E402
+from inventory_simulator.data.precompute import precompute_all  # noqa: E402
+from inventory_simulator.pages import (  # noqa: E402
     _01_portfolio as p01_portfolio,
     _02_sku_deep_dive as p02_sku_deep_dive,
     _03_scenario as p03_scenario,
