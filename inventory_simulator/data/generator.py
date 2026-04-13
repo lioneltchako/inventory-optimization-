@@ -46,17 +46,17 @@ def _generate_demand_history(
 def _generate_residuals(rng: np.random.Generator, sigma_base: float) -> np.ndarray:
     """Generate non-normal residuals (mixture of two Gaussians).
 
-    70% from N(0, sigma1) and 30% from N(0.5*sigma1, 2*sigma1).
-    This creates visible right-skew.
+    70% from N(0, sigma1) and 30% from N(mu2, sigma2) where
+    mu2 = 1.0*sigma1 and sigma2 = 2.5*sigma1.
+    This creates visible right-skew (target avg skewness >= 0.5).
     """
-    n = NUM_RESIDUALS
-    sigma1 = sigma_base
-    component = rng.random(n)
-    residuals = np.where(
-        component < 0.70,
-        rng.normal(0, sigma1, n),
-        rng.normal(0.5 * sigma1, 2.0 * sigma1, n),
-    )
+    sigma1 = max(sigma_base, 0.01)
+    n_main = int(NUM_RESIDUALS * 0.70)
+    n_tail = NUM_RESIDUALS - n_main
+    main_part = rng.normal(0, sigma1, n_main)
+    tail_part = rng.normal(1.0 * sigma1, 2.5 * sigma1, n_tail)
+    residuals = np.concatenate([main_part, tail_part])
+    rng.shuffle(residuals)
     return residuals
 
 
