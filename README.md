@@ -1,17 +1,20 @@
 ## Inventory Policy Simulator
-## DynaCraft / PACCAR — Senior Demand Planner Demo
+## DynaCraft / PACCAR — Senior Demand Planner
 
-Interactive Streamlit demo explaining inventory optimization methodology
-and quantifying the impact of ML forecast quality on safety stock and cost.
+Interactive decision-support tool for inventory policy analysis across a
+120-SKU heavy-duty truck parts portfolio. Quantifies the working-capital
+impact of safety-stock right-sizing under (s,Q) and (R,S) policies.
 
-> Built for a Senior Demand Planner interview at DynaCraft (PACCAR division).
-> Combines supply chain methodology (Vandeput, 2020) with data-driven
-> business impact analysis. Step 1 of a two-phase project.
+> Built for a Senior Demand Planner role at DynaCraft (PACCAR division).
+> Designed to feel like a tool a supply chain manager would open on a
+> Monday morning — not an academic exercise.
 
 **What it shows:**
-- How policy choice (s,Q vs R,S) affects safety stock and cost
-- How ML forecast quality directly reduces safety stock needs
-- Portfolio-level impact across 120 synthetic PACCAR-like SKUs
+- Portfolio-level opportunity mapping (demand variability vs. safety stock excess)
+- Single-SKU 90-day stock trajectory simulation with policy comparison
+- Spend-based criticality segmentation (Critical / Operational / Standard)
+- Waterfall cost-reduction analysis with phased implementation roadmap
+- Executive PDF export for leadership review
 
 ### Run locally
 ```bash
@@ -19,32 +22,34 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-### Deploy to Streamlit Cloud (share the URL before the interview)
+### Deploy to Streamlit Cloud
 1. Push: `./push.sh "ready to deploy"`
-2. Go to https://share.streamlit.io → New app → this repo → `app.py`
-
-Done. Share the URL with the hiring manager.
+2. Go to share.streamlit.io → New app → this repo → `app.py`
 
 ### Project structure
 ```
-inventory_demo/
-├── app.py                    ← navigation shell + sidebar
-├── pages/
-│   ├── 1_overview.py         ← "The Problem & The Tool"
-│   ├── 2_sku_explorer.py     ← single-SKU deep-dive (hero page)
-│   ├── 3_portfolio.py        ← 120-SKU portfolio impact
-│   ├── 4_methodology.py      ← formula explainer (trust builder)
-│   └── 5_business_case.py    ← executive summary + PDF export
-├── utils/
-│   ├── colors.py             ← shared color constants
-│   ├── formulas.py           ← inventory math (Vandeput models)
-│   ├── scenarios.py          ← 6 pre-built PACCAR SKU profiles
-│   ├── portfolio_data.py     ← 120-SKU synthetic dataset
-│   └── disclaimer.py        ← shared banner functions
+inventory-optimization-/
+├── app.py                                ← entry point (st.navigation)
+├── inventory_simulator/
+│   ├── data/
+│   │   └── generator.py                 ← 120-SKU synthetic portfolio
+│   ├── logic/
+│   │   ├── formulas.py                  ← core inventory math
+│   │   ├── simulation.py                ← 90-day stock trajectory engine
+│   │   └── export.py                    ← PDF report generation
+│   ├── ui/
+│   │   ├── components.py                ← shared Streamlit components
+│   │   ├── overview.py                  ← portfolio KPIs + trade-off curve
+│   │   ├── portfolio.py                 ← opportunity map + treemap
+│   │   ├── sku_explorer.py              ← hero page: simulation + deep dive
+│   │   ├── methodology.py               ← formulas, assumptions, limitations
+│   │   └── business_case.py             ← executive summary + waterfall + PDF
+│   └── styles/
+│       └── theme.py                     ← COLOR_MAP + CSS (single source)
 ├── assets/
-│   └── style.css
+│   └── style.css                        ← static CSS supplement
 ├── tests/
-│   └── test_formulas.py      ← 5 smoke tests (pytest)
+│   └── test_formulas.py                 ← 14 smoke tests (pytest)
 ├── push.sh
 └── requirements.txt
 ```
@@ -54,25 +59,11 @@ inventory_demo/
 pytest tests/ -v
 ```
 
-All 5 tests verify the core inventory math:
-- EOQ calculation [Vandeput Ch. 2]
-- Safety stock with fixed lead time [Ch. 4]
-- Safety stock with stochastic lead time [Ch. 6, eq. 6.4]
-- (R,S) vs (s,Q) safety stock ordering [Ch. 6, eq. 6.5]
-- Fill rate > CSL for same safety stock [Ch. 7]
-
-### Step 2 (planned)
-Full simulation-optimization engine:
-- Monte Carlo simulation · KDE demand modeling
-- Bidirectional sim-opt (Vandeput Ch. 13, Method #2)
-- ML forecast integration · 8,000 SKU scope
-- XGBoost bias-corrected demand forecasts
-
-### Methodology
-Vandeput, N. (2020). *Inventory Optimization: Models and Simulations*.
-De Gruyter. DOI: 10.1515/9783110673944
+14 tests covering: EOQ, sigma_x for (s,Q) and (R,S), safety stock ordering,
+fill rate vs CSL, Normal Loss Function, reorder point, z/CSL round-trip,
+cost calculations, and edge cases.
 
 ### Synthetic data statement
 All parameters and KPIs are generated from synthetic PACCAR-like scenarios.
-They reflect real supply chain behavior patterns but do not represent actual
-DynaCraft or PACCAR data. Approximated values are labeled with ~.
+They reflect realistic heavy-duty truck parts distribution patterns but do
+not represent actual DynaCraft or PACCAR operational data.

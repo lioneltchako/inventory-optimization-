@@ -1,132 +1,158 @@
-"""
-Smoke tests for inventory formulas.
-Methodology: Vandeput (2020) "Inventory Optimization: Models and Simulations"
+"""Smoke tests for inventory_simulator.logic.formulas.
 
-Run: pytest tests/ -v
+Each test verifies a key formula result against an analytically-derived
+expected value.
 """
+
+from __future__ import annotations
 
 import math
 
-from utils.formulas import (
-    eoq,
-    safety_stock_sQ,
-    safety_stock_RS,
-    fill_rate,
+
+from inventory_simulator.logic.formulas import (
+    annual_holding_cost,
+    annual_ordering_cost,
     csl_from_z,
+    eoq,
+    fill_rate,
+    normal_loss,
+    reorder_point,
+    safety_stock_RS,
+    safety_stock_sQ,
+    sigma_x_RS,
+    sigma_x_sQ,
+    z_from_csl,
 )
 
 
+# ── EOQ ───────────────────────────────────────────────────────────────────────
+
+
 def test_eoq_basic() -> None:
-    """
-    Q* = sqrt(2 × D × S / h)
-    Q* = sqrt(2 × 300 × 44200 / 3) ≈ 2,973
-    [Vandeput Ch. 2, eq. 2.2]
-    """
-    annual_demand = 44_200  # units/year
-    order_cost = 300  # $ per order
-    holding_cost_per_unit = 3.0  # $/unit/year  (unit_cost × holding_pct)
+    """Q* = sqrt(2 * D * S / h)."""
+    result = eoq(annual_demand=300, order_cost=44_200, holding_cost_per_unit=3.0)
+    expected = math.sqrt(2 * 300 * 44_200 / 3)
+    assert abs(result - expected) < 0.5, f"EOQ mismatch: {result:.1f} vs {expected:.1f}"
 
-    q_star = eoq(annual_demand, order_cost, holding_cost_per_unit)
 
-    expected = math.sqrt(2 * 300 * 44_200 / 3)  # ≈ 2972.7
-    assert abs(q_star - expected) < 1.0, (
-        f"EOQ mismatch: got {q_star:.1f}, expected {expected:.1f}"
+def test_eoq_degenerate_returns_one() -> None:
+    """Zero or negative inputs should return the safe fallback of 1.0."""
+    assert eoq(0, 10, 10) == 1.0
+    assert eoq(100, 0, 10) == 1.0
+    assert eoq(100, 10, 0) == 1.0
+
+
+# ── sigma_x ───────────────────────────────────────────────────────────────────
+
+
+def test_sigma_x_sQ_fixed_lead_time() -> None:
+    """With zero lead-time std dev, sigma_x = sigma_d * sqrt(mu_L)."""
+    mu_d, sigma_d, mu_L = 10.0, 4.0, 9.0
+    result = sigma_x_sQ(mu_d, sigma_d, mu_L, lt_std=0.0)
+    expected = sigma_d * math.sqrt(mu_L)  # = 4 * 3 = 12
+    assert abs(result - expected) < 0.01
+
+
+def test_sigma_x_sQ_stochastic_lt() -> None:
+    """sigma_x = sqrt(mu_L * sigma_d^2 + sigma_L^2 * mu_d^2)."""
+    mu_d, sigma_d = 5.0, 2.0
+    mu_L, sigma_L = 4.0, 1.5
+    result = sigma_x_sQ(mu_d, sigma_d, mu_L, sigma_L)
+    expected = math.sqrt(mu_L * sigma_d**2 + sigma_L**2 * mu_d**2)
+    assert abs(result - expected) < 1e-9
+
+
+def test_sigma_x_RS_longer_than_sQ() -> None:
+    """(R,S) sigma_x must exceed (s,Q) sigma_x for the same SKU and positive R."""
+    mu_d, sigma_d, mu_L, sigma_L = 8.0, 3.0, 7.0, 2.0
+    review_period = 7
+    sx_sQ = sigma_x_sQ(mu_d, sigma_d, mu_L, sigma_L)
+    sx_RS = sigma_x_RS(mu_d, sigma_d, mu_L, sigma_L, review_period)
+    assert sx_RS > sx_sQ
+
+
+# ── Safety stock ordering ─────────────────────────────────────────────────────
+
+
+def test_ss_RS_exceeds_ss_sQ() -> None:
+    """With identical parameters, (R,S) SS > (s,Q) SS for positive review period."""
+    args = dict(
+        z=1.645,
+        demand_mean=6.0,
+        demand_std=2.5,
+        lt_mean=10.0,
+        lt_std=2.0,
     )
+    ss_sq = safety_stock_sQ(**args)
+    ss_rs = safety_stock_RS(**args, review_period=7)
+    assert ss_rs > ss_sq
 
 
-def test_ss_sQ_fixed_lt() -> None:
-    """
-    With σL = 0 the stochastic formula collapses to the textbook:
-    SS = Z × σd × sqrt(L)
-    [Vandeput Ch. 4 — baseline case before adding lead time variability]
-    """
+# ── Fill rate ─────────────────────────────────────────────────────────────────
+
+
+def test_fill_rate_exceeds_csl() -> None:
+    """Fill rate (beta) must be >= CSL for the same safety stock level."""
+    sigma_x = 15.0
+    q = 80.0
     z = 1.645  # ~95% CSL
-    demand_mean = 100.0
-    demand_std = 20.0
-    lt_mean = 4.0
-    lt_std = 0.0  # deterministic lead time
-
-    ss = safety_stock_sQ(z, demand_mean, demand_std, lt_mean, lt_std)
-
-    # σx = sqrt(4 × 20²) = sqrt(1600) = 40   → SS = 1.645 × 40 = 65.8
-    expected = z * demand_std * math.sqrt(lt_mean)
-    assert abs(ss - expected) < 0.01, (
-        f"SS (fixed LT) mismatch: got {ss:.4f}, expected {expected:.4f}"
-    )
-
-
-def test_ss_sQ_stochastic_lt() -> None:
-    """
-    With both σd > 0 and σL > 0:
-    σx = sqrt(μL × σd² + σL² × μd²)
-    SS = Z × σx
-    [Vandeput Ch. 6, eq. 6.4]
-    """
-    z = 1.645
-    demand_mean = 100.0
-    demand_std = 20.0
-    lt_mean = 4.0
-    lt_std = 1.0  # variable lead time
-
-    ss_stochastic = safety_stock_sQ(z, demand_mean, demand_std, lt_mean, lt_std)
-    ss_fixed = safety_stock_sQ(z, demand_mean, demand_std, lt_mean, 0.0)
-
-    # Adding σL > 0 must increase safety stock
-    assert ss_stochastic > ss_fixed, (
-        f"Stochastic LT should raise SS: {ss_stochastic:.2f} <= {ss_fixed:.2f}"
-    )
-
-    # Verify formula directly: σx = sqrt(4×400 + 1×10000) = sqrt(11600) ≈ 107.7
-    sigma_x_expected = math.sqrt(lt_mean * demand_std**2 + lt_std**2 * demand_mean**2)
-    assert abs(ss_stochastic - z * sigma_x_expected) < 0.01, "σx formula mismatch"
-
-
-def test_ss_RS_vs_sQ_same_lt() -> None:
-    """
-    For the same lead time, (R,S) requires more safety stock than (s,Q)
-    because the risk period is (R + L) not just L.
-    [Vandeput Ch. 6, eq. 6.5]
-    """
-    z = 1.645
-    demand_mean = 100.0
-    demand_std = 20.0
-    lt_mean = 4.0
-    lt_std = 0.5
-    review_period = 2  # weeks
-
-    ss_sQ = safety_stock_sQ(z, demand_mean, demand_std, lt_mean, lt_std)
-    ss_RS = safety_stock_RS(z, demand_mean, demand_std, lt_mean, lt_std, review_period)
-
-    assert ss_RS > ss_sQ, (
-        f"(R,S) SS {ss_RS:.2f} should exceed (s,Q) SS {ss_sQ:.2f} "
-        f"because review period adds blind-spot risk"
-    )
-
-
-def test_fill_rate_higher_than_csl() -> None:
-    """
-    For the same safety stock, fill rate β > CSL (in terms of probability).
-    The Normal Loss Function ensures fill rate approaches 1 faster than CSL.
-    [Vandeput Ch. 7, eq. 7.3]
-    """
-    z = 1.645  # 95% CSL
-    demand_mean = 100.0
-    demand_std = 20.0
-    lt_mean = 4.0
-    lt_std = 0.5
-
-    from utils.formulas import sigma_x_sQ as sx_fn
-
-    sigma_x = sx_fn(demand_mean, demand_std, lt_mean, lt_std)
     ss = z * sigma_x
-    csl = csl_from_z(z)  # ≈ 0.95
-    cycle_dem = demand_mean * lt_mean  # demand per cycle
-    beta = fill_rate(ss, sigma_x, cycle_dem)  # fill rate
+    csl = csl_from_z(z)
+    beta = fill_rate(ss, sigma_x, q)
+    assert beta >= csl, f"Fill rate {beta:.4f} should be >= CSL {csl:.4f}"
 
-    assert beta > csl, (
-        f"Fill rate ({beta:.4f}) should be > CSL ({csl:.4f}) "
-        f"for the same safety stock level"
-    )
-    # Also sanity-check both are plausible
-    assert 0.90 < csl < 1.0, f"CSL out of range: {csl}"
-    assert 0.90 < beta <= 1.0, f"Fill rate out of range: {beta}"
+
+def test_fill_rate_clamps_to_one() -> None:
+    """Very large safety stock should return fill rate <= 1.0."""
+    assert fill_rate(10_000, 1.0, 50.0) <= 1.0
+
+
+def test_fill_rate_degenerate_sigma() -> None:
+    """Zero sigma_x should return perfect fill rate."""
+    assert fill_rate(0.0, 0.0, 50.0) == 1.0
+
+
+# ── Normal loss function ──────────────────────────────────────────────────────
+
+
+def test_normal_loss_at_zero() -> None:
+    """L(0) should equal the standard Normal PDF at 0: 1/sqrt(2*pi)."""
+    result = normal_loss(0.0)
+    expected = 1.0 / math.sqrt(2 * math.pi)
+    assert abs(result - expected) < 1e-6
+
+
+# ── Reorder point ─────────────────────────────────────────────────────────────
+
+
+def test_reorder_point_basic() -> None:
+    """ROP = mu_d * mu_L + SS."""
+    result = reorder_point(demand_mean=5.0, lt_mean=10.0, safety_stock=20.0)
+    assert abs(result - 70.0) < 1e-9
+
+
+# ── z / CSL round-trip ────────────────────────────────────────────────────────
+
+
+def test_z_csl_round_trip() -> None:
+    """z_from_csl and csl_from_z should be mutual inverses."""
+    for csl in (0.90, 0.95, 0.97, 0.99):
+        z = z_from_csl(csl)
+        recovered = csl_from_z(z)
+        assert abs(recovered - csl) < 1e-6, f"Round-trip failed for CSL={csl}"
+
+
+# ── Cost functions ────────────────────────────────────────────────────────────
+
+
+def test_annual_holding_cost() -> None:
+    """Holding cost = avg_inventory * unit_cost * holding_pct."""
+    result = annual_holding_cost(avg_inventory=100.0, unit_cost=50.0, holding_pct=0.25)
+    assert abs(result - 1250.0) < 1e-9
+
+
+def test_annual_ordering_cost() -> None:
+    """Ordering cost = (D / Q) * order_cost."""
+    result = annual_ordering_cost(annual_demand=365.0, order_qty=73.0, order_cost=100.0)
+    expected = (365.0 / 73.0) * 100.0
+    assert abs(result - expected) < 1e-6

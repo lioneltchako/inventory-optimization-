@@ -1,69 +1,52 @@
-/* Inventory Policy Simulator — DynaCraft / PACCAR */
+/*
+ * Inventory Policy Simulator — DynaCraft / PACCAR
+ * Static CSS supplement (most styling is injected via styles/theme.py)
+ */
 
-/* Metric card styling */
-[data-testid="metric-container"] {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
+/* Smooth transitions */
+* {
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* Remove default Streamlit padding at top */
+.block-container {
+    padding-top: 1.2rem !important;
+}
+
+/* Plotly chart container — ensure no overflow */
+.js-plotly-plot .plotly {
     border-radius: 8px;
-    padding: 1rem;
 }
 
-/* Primary accent */
-.primary { color: #185FA5; }
-.success { color: #1D9E75; }
-.warning { color: #BA7517; }
-.danger  { color: #E24B4A; }
-.neutral { color: #888780; }
-
-/* Before/After cards */
-.card-baseline {
-    border-left: 4px solid #BA7517;
-    background: #fff9f0;
-    padding: 1rem;
-    border-radius: 6px;
-}
-.card-optimized {
-    border-left: 4px solid #1D9E75;
-    background: #f0faf6;
-    padding: 1rem;
-    border-radius: 6px;
+/* Expander styling */
+details[data-testid="stExpander"] summary {
+    font-weight: 600;
+    color: #1B3A6B;
 }
 
-/* Step cards */
-.step-card {
-    background: #f0f4fa;
-    border-left: 4px solid #185FA5;
-    padding: 1rem;
-    border-radius: 6px;
-    margin-bottom: 0.5rem;
-}
-
-/* Formula panel */
-.formula-companion {
-    background: #f8f9fa;
-    border-left: 3px solid #185FA5;
-    padding: 0.75rem 1rem;
-    border-radius: 0 6px 6px 0;
+/* Tab styling */
+button[data-baseweb="tab"] {
+    font-weight: 600;
     font-size: 0.9rem;
-    color: #333;
+}
+button[data-baseweb="tab"][aria-selected="true"] {
+    border-bottom-color: #E87722 !important;
+    color: #1B3A6B !important;
 }
 
-/* Insight callout boxes */
-.insight-green {
-    background: #f0faf6;
-    border: 1px solid #1D9E75;
-    border-radius: 8px;
-    padding: 1.2rem;
+/* Download button */
+.stDownloadButton > button {
+    background-color: #1B3A6B !important;
+    color: white !important;
+    border: none !important;
+    font-weight: 600;
 }
-.insight-blue {
-    background: #f0f4fa;
-    border: 1px solid #185FA5;
-    border-radius: 8px;
-    padding: 1.2rem;
+.stDownloadButton > button:hover {
+    background-color: #142e55 !important;
 }
-.insight-teal {
-    background: #e8f7f4;
-    border: 1px solid #1D9E75;
-    border-radius: 8px;
-    padding: 1.2rem;
+
+/* Toast styling */
+[data-testid="stToast"] {
+    background-color: #FEF2F2 !important;
+    border-left: 4px solid #C0392B !important;
 }
