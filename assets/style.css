@@ -1,0 +1,69 @@
+/* Inventory Policy Simulator — DynaCraft / PACCAR */
+
+/* Metric card styling */
+[data-testid="metric-container"] {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+/* Primary accent */
+.primary { color: #185FA5; }
+.success { color: #1D9E75; }
+.warning { color: #BA7517; }
+.danger  { color: #E24B4A; }
+.neutral { color: #888780; }
+
+/* Before/After cards */
+.card-baseline {
+    border-left: 4px solid #BA7517;
+    background: #fff9f0;
+    padding: 1rem;
+    border-radius: 6px;
+}
+.card-optimized {
+    border-left: 4px solid #1D9E75;
+    background: #f0faf6;
+    padding: 1rem;
+    border-radius: 6px;
+}
+
+/* Step cards */
+.step-card {
+    background: #f0f4fa;
+    border-left: 4px solid #185FA5;
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+}
+
+/* Formula panel */
+.formula-companion {
+    background: #f8f9fa;
+    border-left: 3px solid #185FA5;
+    padding: 0.75rem 1rem;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+/* Insight callout boxes */
+.insight-green {
+    background: #f0faf6;
+    border: 1px solid #1D9E75;
+    border-radius: 8px;
+    padding: 1.2rem;
+}
+.insight-blue {
+    background: #f0f4fa;
+    border: 1px solid #185FA5;
+    border-radius: 8px;
+    padding: 1.2rem;
+}
+.insight-teal {
+    background: #e8f7f4;
+    border: 1px solid #1D9E75;
+    border-radius: 8px;
+    padding: 1.2rem;
+}
